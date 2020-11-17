@@ -1,0 +1,147 @@
+<!doctype html>
+<html>
+
+<head>
+	<title>Graph</title>
+	<script src="js/papaparse.min.js"></script>
+	<script type="text/javascript" src="js/Chart.bundle.js"></script>
+	<script src="js/jquery-3.3.1.js"></script>
+	<style>
+	canvas{
+		-moz-user-select: none;
+		-webkit-user-select: none;
+		-ms-user-select: none;
+	}
+	</style>
+	<meta http-equiv='cache-control' content="no-cache, no-store, must-revalidate" />
+	<meta http-equiv='expires' content='0'>
+	<meta http-equiv='pragma' content='no-cache'>
+</head>
+
+<body>
+	<div style="width:55%;">
+		<canvas id="canvas"  width="800" height="600"></canvas>
+	</div>
+	<br/>
+	<br/>
+	<button id="stop_reload" onclick="stop_reload ()">Stop Reload</button>
+	<button onclick="document.getElementById('link').click()">Download data</button>
+	<a id="link" download href="result.dat"></a>
+	<button id="continue" onclick="window.location.href='index.html'">Return to main</button>
+	<script>
+		window.chartColors = {
+			red: 'rgb(255, 99, 132)',
+			orange: 'rgb(255, 159, 64)',
+			yellow: 'rgb(255, 205, 86)',
+			green: 'rgb(75, 192, 192)',
+			blue: 'rgb(54, 162, 235)',
+			purple: 'rgb(153, 102, 255)',
+			grey: 'rgb(201, 203, 207)'
+		};
+
+		var config = {
+			type: 'line',
+			data: {
+				labels: [],
+				datasets: [],
+			},
+
+			options: {
+				responsive: true,
+				title: {
+					display: true,
+					text: 'Raw data from sensors'
+				},
+				animation: {
+					duration: 0, // general animation time
+				},
+
+				responsiveAnimationDuration: 0, // animation duration after a resize
+				scales: {
+					xAxes: [{
+						display: true,
+						scaleLabel: {
+							display: true,
+							labelString: 'Points'
+						}
+					}],
+					yAxes: [{
+						display: true,
+						scaleLabel: {
+							display: true,
+							labelString: 'Value'
+							
+						}
+					}]
+				}
+
+			}
+		};
+
+		window.onload = function() {
+			var ctx = document.getElementById('canvas').getContext('2d');
+			window.myLine = new Chart(ctx, config);
+		};
+		
+		var colorNames = Object.keys(window.chartColors);
+		function parseData() {
+			Papa.parse("result.dat", {
+				download: true,
+				complete: function(results) {
+					createGraph(results.data);
+				}
+			});
+		}
+		function createGraph(pd) {
+			config.data.labels.splice(0, config.data.labels.length); 
+			config.data.datasets.splice(0, config.data.datasets.length); 
+			for (var i = 1; i < pd.length; i++) {
+				config.data.labels.push(i);
+			}
+			for (var i = 0; i < pd[0].length-1; i++) {
+				var colorName = colorNames[config.data.datasets.length % colorNames.length];
+				var newColor = window.chartColors[colorName];
+				
+				var newDataset = {
+					label: 'Chanel ' + (i+1),
+					backgroundColor: newColor,
+					borderColor: newColor,
+					pointRadius: 0,
+					pointBorderWidth: 0.1,
+					data: [],
+					fill: false
+				};
+				
+				for (var j = 1; j < pd.length; j++) {
+					newDataset.data.push(pd[j][i]);
+				}
+				config.data.datasets.push(newDataset);
+			}
+			window.myLine.update();
+			
+			
+		}
+
+		var gen_graphUrl = "cgi-bin/gen_graph.sh";
+		function gen_graph() {
+			$.ajax({
+				url: gen_graphUrl,
+				success: function(result) {
+					parseData();
+				}
+			});
+		}
+		parseData();
+		var timerId = setInterval(function() {
+			gen_graph();
+		}, 2000);
+		
+		function stop_reload () {
+			clearInterval(timerId);
+		};
+		
+
+	</script>
+</body>
+
+</html>
